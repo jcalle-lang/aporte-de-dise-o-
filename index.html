@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisualKanban - Gestor de Proyectos Escolares</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cosmic: {
+                            950: '#020408',
+                            900: '#0a0f1a',
+                            800: '#111827',
+                            700: '#1e293b',
+                            500: '#475569',
+                            accent: '#f472b6',
+                            cyan: '#22d3ee',
+                            emerald: '#34d399',
+                            amber: '#fbbf24',
+                        }
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow-pulse': 'glowPulse 3s ease-in-out infinite',
+                        'shimmer': 'shimmer 2.5s linear infinite',
+                        'fade-up': 'fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+                        'slide-in': 'slideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-8px)' },
+                        },
+                        glowPulse: {
+                            '0%, 100%': { opacity: '0.4', transform: 'scale(1)' },
+                            '50%': { opacity: '0.7', transform: 'scale(1.05)' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-200% 0' },
+                            '100%': { backgroundPosition: '200% 0' },
+                        },
+                        fadeUp: {
+                            '0%': { opacity: '0', transform: 'translateY(12px) scale(0.97)' },
+                            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+                        },
+                        slideIn: {
+                            '0%': { opacity: '0', transform: 'translateX(24px)' },
+                            '100%': { opacity: '1', transform: 'translateX(0)' },
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #020408;
+            --accent-pink: #f472b6;
+            --accent-cyan: #22d3ee;
+            --accent-emerald: #34d399;
+            --glow-pink: rgba(244, 114, 182, 0.35);
+            --glow-cyan: rgba(34, 211, 238, 0.25);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Orbes de fondo animados */
+        .aurora-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+            animation: orbDrift 18s ease-in-out infinite;
+        }
+        .aurora-orb-1 {
+            width: 420px; height: 420px;
+            background: radial-gradient(circle, rgba(244, 114, 182, 0.18) 0%, transparent 70%);
+            top: -10%; left: -5%;
+            animation-delay: 0s;
+        }
+        .aurora-orb-2 {
+            width: 380px; height: 380px;
+            background: radial-gradient(circle, rgba(34, 211, 238, 0.15) 0%, transparent 70%);
+            bottom: 10%; right: -8%;
+            animation-delay: -6s;
+        }
+        .aurora-orb-3 {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(52, 211, 153, 0.12) 0%, transparent 70%);
+            top: 40%; left: 50%;
+            animation-delay: -12s;
+        }
+
+        @keyframes orbDrift {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -20px) scale(1.08); }
+            66% { transform: translate(-20px, 25px) scale(0.95); }
+        }
+
+        .title-gradient {
+            background: linear-gradient(90deg, #22d3ee, #f472b6, #a78bfa, #34d399);
+            background-size: 300% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: titleShift 6s ease infinite;
+        }
+
+        @keyframes titleShift {
+            0%, 100% { background-position: 0% center; }
+            50% { background-position: 100% center; }
+        }
+
+        .progress-shimmer {
+            background: linear-gradient(90deg, #22d3ee, #f472b6, #34d399, #22d3ee);
+            background-size: 200% 100%;
+            animation: shimmer 2.5s linear infinite;
+        }
+
+        .drag-over {
+            border-style: dashed !important;
+            border-color: var(--accent-cyan) !important;
+            background-color: rgba(34, 211, 238, 0.08) !important;
+            transform: scale(1.01);
+            box-shadow: 0 0 24px var(--glow-cyan);
+        }
+
+        .task-card {
+            animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            opacity: 0;
+        }
+
+        .task-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(244, 114, 182, 0.2);
+        }
+
+        .kanban-column {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .kanban-column:hover {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+        }
+
+        .btn-glow:hover {
+            box-shadow: 0 0 28px var(--glow-pink), 0 8px 24px rgba(244, 114, 182, 0.25);
+        }
+
+        .view-transition {
+            animation: fadeUp 0.4s ease forwards;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-deep); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        .stat-card {
+            transition: transform 0.25s ease, border-color 0.25s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(34, 211, 238, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-cosmic-950 text-slate-100 min-h-screen flex flex-col antialiased relative overflow-x-hidden">
+
+    <div class="aurora-orb aurora-orb-1" aria-hidden="true"></div>
+    <div class="aurora-orb aurora-orb-2" aria-hidden="true"></div>
+    <div class="aurora-orb aurora-orb-3" aria-hidden="true"></div>
+
+    <canvas id="cosmic-canvas" class="fixed inset-0 pointer-events-none z-0 opacity-70" aria-hidden="true"></canvas>
+
+    <header class="relative z-10 border-b border-cosmic-700/40 bg-cosmic-950/75 backdrop-blur-xl sticky top-0 px-4 py-4 md:px-8">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-cosmic-accent via-fuchsia-500 to-cosmic-cyan p-2.5 rounded-2xl text-white shadow-lg shadow-cosmic-accent/30 animate-float">
+                    <i data-lucide="kanban" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight title-gradient">VisualKanban</h1>
+                    <p class="text-xs text-slate-400 font-medium">Proyecto de Evaluación • Especialidad de Informática</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <div class="flex bg-cosmic-900/80 border border-cosmic-700/50 p-1 rounded-xl backdrop-blur-sm">
+                    <button id="btn-view-kanban" type="button" data-view="kanban" class="view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-cosmic-accent to-fuchsia-600 text-white transition-all cursor-pointer shadow-md">
+                        <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+                        <span>Tablero</span>
+                    </button>
+                    <button id="btn-view-calendar" type="button" data-view="calendar" class="view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer">
+                        <i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>
+                        <span>Calendario</span>
+                    </button>
+                </div>
+
+                <button type="button" id="btn-new-task" class="btn-glow flex items-center justify-center gap-2 bg-gradient-to-r from-cosmic-accent via-fuchsia-500 to-cosmic-cyan hover:opacity-95 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg active:scale-[0.97] cursor-pointer">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span>Nueva Tarea</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6">
+
+        <div class="bg-gradient-to-br from-cosmic-900/95 via-cosmic-800/30 to-cosmic-900/50 border border-cosmic-700/50 rounded-2xl p-4 md:p-6 flex flex-col gap-4 shadow-xl backdrop-blur-sm relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-48 h-48 bg-cosmic-cyan/5 rounded-full blur-3xl pointer-events-none animate-glow-pulse"></div>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">¡Bienvenido a tu Espacio de Trabajo Escolar!</h2>
+                    <p class="text-sm text-slate-400 mt-1">Organiza tus proyectos, tareas semanales y actividades de manera interactiva.</p>
+                </div>
+                <div class="flex gap-4 w-full md:w-auto justify-start">
+                    <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
+                        <div id="stats-total" class="text-lg font-bold text-cosmic-cyan">0</div>
+                        <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total</div>
+                    </div>
+                    <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
+                        <div id="stats-pending" class="text-lg font-bold text-amber-400">0</div>
+                        <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Pendientes</div>
+                    </div>
+                    <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
+                        <div id="stats-completed" class="text-lg font-bold text-emerald-400">0</div>
+                        <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Listas</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-cosmic-700/40 pt-4 relative">
+                <div class="flex justify-between items-center text-xs mb-1.5">
+                    <span id="motivational-msg" class="text-transparent bg-clip-text bg-gradient-to-r from-cosmic-cyan to-cosmic-accent font-medium transition-all duration-500">¡Vamos a organizarnos hoy!</span>
+                    <span id="progress-percentage" class="text-slate-400 font-mono font-semibold">0% completado</span>
+                </div>
+                <div class="w-full bg-cosmic-950 rounded-full h-3 overflow-hidden border border-cosmic-700/60 shadow-inner">
+                    <div id="progress-bar" class="progress-shimmer h-full w-0 transition-all duration-700 ease-out rounded-full"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-cosmic-900/60 border border-cosmic-700/50 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-lg backdrop-blur-sm">
+            <div class="relative w-full md:w-72">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                </span>
+                <input type="text" id="search-input" class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cosmic-cyan focus:ring-2 focus:ring-cosmic-cyan/20 transition-all" placeholder="Buscar por título de tarea...">
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                <select id="filter-subject" class="bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cosmic-cyan transition-colors cursor-pointer font-semibold">
+                    <option value="todos">Todas las asignaturas</option>
+                    <option value="Informática">Informática</option>
+                    <option value="Matemáticas">Matemáticas</option>
+                    <option value="Física">Física</option>
+                    <option value="Química">Química</option>
+                    <option value="Lengua y Literatura">Lengua y Lit.</option>
+                    <option value="Historia">Historia</option>
+                    <option value="Otro">Otro</option>
+                </select>
+
+                <select id="filter-priority" class="bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cosmic-cyan transition-colors cursor-pointer font-semibold">
+                    <option value="todos">Todas las prioridades</option>
+                    <option value="Baja">Prioridad Baja</option>
+                    <option value="Media">Prioridad Media</option>
+                    <option value="Alta">Prioridad Alta</option>
+                </select>
+
+                <div class="flex items-center gap-1.5 border-l border-cosmic-700/60 pl-3">
+                    <button type="button" id="btn-export" class="p-2 bg-cosmic-950 hover:bg-cosmic-800 border border-cosmic-700/60 rounded-xl text-slate-400 hover:text-cosmic-cyan transition-all cursor-pointer hover:scale-105" title="Exportar copia de seguridad">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                    </button>
+                    <label class="p-2 bg-cosmic-950 hover:bg-cosmic-800 border border-cosmic-700/60 rounded-xl text-slate-400 hover:text-cosmic-cyan transition-all cursor-pointer hover:scale-105" title="Importar copia de seguridad">
+                        <input type="file" id="import-file" accept=".json" class="hidden">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+        <div id="kanban-view-container" class="view-transition grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+
+            <div class="kanban-column bg-cosmic-900/90 border border-rose-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-3 h-3 rounded-full bg-rose-400 ring-4 ring-rose-400/20 animate-pulse"></span>
+                        <h3 class="font-bold text-slate-200 tracking-tight">Por Hacer</h3>
+                    </div>
+                    <span id="badge-todo" class="text-xs bg-rose-950/50 text-rose-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-rose-800/40">0</span>
+                </div>
+                <div id="todo" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="todo"></div>
+            </div>
+
+            <div class="kanban-column bg-cosmic-900/90 border border-amber-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-3 h-3 rounded-full bg-amber-400 ring-4 ring-amber-400/20"></span>
+                        <h3 class="font-bold text-slate-200 tracking-tight">En Proceso</h3>
+                    </div>
+                    <span id="badge-progress" class="text-xs bg-amber-950/50 text-amber-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-amber-800/40">0</span>
+                </div>
+                <div id="progress" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="progress"></div>
+            </div>
+
+            <div class="kanban-column bg-cosmic-900/90 border border-emerald-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
+                    <div class="flex items-center gap-2.5">
+                        <span class="w-3 h-3 rounded-full bg-emerald-400 ring-4 ring-emerald-400/20"></span>
+                        <h3 class="font-bold text-slate-200 tracking-tight">Terminado</h3>
+                    </div>
+                    <span id="badge-done" class="text-xs bg-emerald-950/50 text-emerald-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-emerald-800/40">0</span>
+                </div>
+                <div id="done" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="done"></div>
+            </div>
+        </div>
+
+        <div id="calendar-view-container" class="hidden view-transition bg-cosmic-900/90 border border-cosmic-700/40 rounded-2xl p-6 shadow-xl flex flex-col gap-4 backdrop-blur-sm">
+            <div class="flex justify-between items-center pb-4 border-b border-cosmic-700/30">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-gradient-to-br from-cosmic-cyan/20 to-cosmic-accent/20 border border-cosmic-cyan/30 rounded-xl text-cosmic-cyan">
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 id="calendar-month-year" class="text-lg font-bold text-white">Junio 2026</h3>
+                        <p class="text-xs text-slate-400">Revisa tus entregas organizadas por fecha límite</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="cal-prev" class="p-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 hover:border-cosmic-cyan/40 text-slate-300 hover:text-white transition-all cursor-pointer hover:scale-105">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                    </button>
+                    <button type="button" id="cal-today" class="px-3 py-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 text-xs font-semibold text-slate-300 hover:text-cosmic-cyan transition-all cursor-pointer">
+                        Hoy
+                    </button>
+                    <button type="button" id="cal-next" class="p-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 hover:border-cosmic-cyan/40 text-slate-300 hover:text-white transition-all cursor-pointer hover:scale-105">
+                        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[600px] border-collapse">
+                    <thead>
+                        <tr class="text-slate-400 text-xs uppercase tracking-wider font-bold">
+                            <th class="py-2 px-1 text-center w-[14.28%]">Dom</th>
+                            <th class="py-2 px-1 text-center w-[14.28%]">Lun</th>
+                            <th class="py-2 px-1 text-center w-[14.28%]">Mar</th>
+                            <th class="py-2 px-1 text-center w-[14.28%]">Mié</th>
+                            <th class="py-2 px-1 text-center w-[14.28%]">Jue</th>
+                            <th class="py-2 px-1 text-center w-[14.28%]">Vie</th>
+                            <th class="py-2 px-1 text-center w-[14.28%]">Sáb</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendar-grid-body" class="divide-y divide-cosmic-700/30"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="modal-backdrop" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div id="modal-container" class="bg-cosmic-900 border border-cosmic-accent/30 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl shadow-cosmic-accent/10 transition-all duration-300 scale-95 opacity-0">
+            <div class="px-6 py-4 border-b border-cosmic-700 flex justify-between items-center bg-gradient-to-r from-cosmic-900 to-cosmic-800/50">
+                <h3 id="modal-title" class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-cosmic-cyan"></i>
+                    Crear Nueva Tarea
+                </h3>
+                <button type="button" id="btn-close-modal" class="text-slate-400 hover:text-white bg-cosmic-800 hover:bg-cosmic-700/50 p-1.5 rounded-lg transition-colors cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="task-form" class="p-6 space-y-4">
+                <input type="hidden" id="edit-task-id">
+
+                <div>
+                    <label for="task-name" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Nombre de la Tarea / Actividad</label>
+                    <input type="text" id="task-name" required class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cosmic-cyan focus:ring-2 focus:ring-cosmic-cyan/30 transition-all" placeholder="Ej: Proyecto Integrador de Sistemas">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="task-subject" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Materia / Asignatura</label>
+                        <select id="task-subject" class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-cosmic-cyan transition-all font-semibold">
+                            <option value="Informática">Informática</option>
+                            <option value="Matemáticas">Matemáticas</option>
+                            <option value="Física">Física</option>
+                            <option value="Química">Química</option>
+                            <option value="Lengua y Literatura">Lengua y Lit.</option>
+                            <option value="Historia">Historia</option>
+                            <option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="task-date" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Fecha Límite de Entrega</label>
+                        <input type="date" id="task-date" required class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cosmic-cyan transition-all">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Prioridad</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="relative flex items-center justify-center border border-cosmic-700/60 rounded-xl p-3 cursor-pointer hover:bg-cosmic-950/50 transition-all hover:scale-[1.02]">
+                            <input type="radio" name="task-priority" value="Baja" checked class="sr-only peer">
+                            <span class="text-xs font-bold text-slate-400 peer-checked:text-emerald-400">Baja</span>
+                            <div class="absolute inset-0 rounded-xl border border-transparent peer-checked:border-emerald-500/40 peer-checked:bg-emerald-500/15 pointer-events-none"></div>
+                        </label>
+                        <label class="relative flex items-center justify-center border border-cosmic-700/60 rounded-xl p-3 cursor-pointer hover:bg-cosmic-950/50 transition-all hover:scale-[1.02]">
+                            <input type="radio" name="task-priority" value="Media" class="sr-only peer">
+                            <span class="text-xs font-bold text-slate-400 peer-checked:text-amber-400">Media</span>
+                            <div class="absolute inset-0 rounded-xl border border-transparent peer-checked:border-amber-500/40 peer-checked:bg-amber-500/15 pointer-events-none"></div>
+                        </label>
+                        <label class="relative flex items-center justify-center border border-cosmic-700/60 rounded-xl p-3 cursor-pointer hover:bg-cosmic-950/50 transition-all hover:scale-[1.02]">
+                            <input type="radio" name="task-priority" value="Alta" class="sr-only peer">
+                            <span class="text-xs font-bold text-slate-400 peer-checked:text-rose-400">Alta</span>
+                            <div class="absolute inset-0 rounded-xl border border-transparent peer-checked:border-rose-500/40 peer-checked:bg-rose-500/15 pointer-events-none"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="task-notes" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Instrucciones / Detalles</label>
+                    <textarea id="task-notes" rows="3" class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-cosmic-cyan transition-all resize-none" placeholder="Requerimientos, enlaces o notas del grupo..."></textarea>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-cosmic-700/60">
+                    <button type="button" id="btn-cancel-modal" class="px-5 py-2.5 rounded-xl border border-cosmic-700/60 text-slate-300 hover:bg-cosmic-800 transition-all cursor-pointer font-semibold">Cancelar</button>
+                    <button type="submit" id="submit-btn" class="btn-glow px-6 py-2.5 rounded-xl bg-gradient-to-r from-cosmic-accent to-fuchsia-600 hover:to-cosmic-cyan text-white font-bold transition-all cursor-pointer">Guardar Tarea</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="mobile-menu-backdrop" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end justify-center z-50 p-4">
+        <div id="mobile-menu-container" class="bg-cosmic-900 border border-cosmic-accent/30 rounded-t-2xl w-full max-w-md p-6 space-y-4 translate-y-full transition-transform duration-300">
+            <h4 class="font-bold text-lg text-white truncate" id="mobile-menu-title">Acciones de Tarjeta</h4>
+            <input type="hidden" id="mobile-task-id">
+
+            <div class="grid grid-cols-1 gap-2.5 font-medium">
+                <button type="button" data-mobile-move="todo" class="mobile-move-btn flex items-center gap-3 w-full bg-cosmic-950 border border-cosmic-700/60 p-3 rounded-xl hover:bg-cosmic-800 hover:border-rose-500/30 text-left cursor-pointer transition-all">
+                    <span class="w-3 h-3 rounded-full bg-rose-400"></span>
+                    <span>Mover a: Por Hacer</span>
+                </button>
+                <button type="button" data-mobile-move="progress" class="mobile-move-btn flex items-center gap-3 w-full bg-cosmic-950 border border-cosmic-700/60 p-3 rounded-xl hover:bg-cosmic-800 hover:border-amber-500/30 text-left cursor-pointer transition-all">
+                    <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                    <span>Mover a: En Proceso</span>
+                </button>
+                <button type="button" data-mobile-move="done" class="mobile-move-btn flex items-center gap-3 w-full bg-cosmic-950 border border-cosmic-700/60 p-3 rounded-xl hover:bg-cosmic-800 hover:border-emerald-500/30 text-left cursor-pointer transition-all">
+                    <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                    <span>Mover a: Terminado</span>
+                </button>
+                <div class="border-t border-cosmic-700/40 my-2"></div>
+                <button type="button" id="btn-mobile-edit" class="flex items-center gap-3 w-full bg-cosmic-950 border border-cosmic-cyan/30 p-3 rounded-xl text-cosmic-cyan hover:bg-cosmic-800 text-left cursor-pointer">
+                    <i data-lucide="edit" class="w-5 h-5"></i>
+                    <span>Editar Detalles</span>
+                </button>
+                <button type="button" id="btn-mobile-delete" class="flex items-center gap-3 w-full bg-red-950/40 border border-red-900/50 p-3 rounded-xl text-rose-400 hover:bg-red-900/30 text-left cursor-pointer">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    <span>Eliminar Tarea</span>
+                </button>
+            </div>
+            <button type="button" id="btn-close-mobile" class="w-full bg-cosmic-800 hover:bg-cosmic-700 py-3 rounded-xl font-semibold text-slate-300 cursor-pointer">Cerrar Menú</button>
+        </div>
+    </div>
+
+    <footer class="relative z-10 border-t border-cosmic-700/50 bg-cosmic-950/90 px-4 py-6 md:px-8 mt-auto backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
+            <p>© 2026 VisualKanban. Creado para examen de evaluación del 04/06/2026.</p>
+            <div class="flex items-center gap-4 flex-wrap justify-center">
+                <span class="text-slate-400 font-semibold">Asignatura: <span class="text-slate-300">Desarrollo Web (Técnico de la Especialidad)</span></span>
+                <span class="hidden md:inline text-slate-600">|</span>
+                <span class="text-slate-400 font-semibold">Docente: <span class="text-cosmic-cyan font-bold">Lcdo. Joel Hernández Calero</span></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const STORAGE_KEY = 'kanban_school_tasks';
+        const EXAM_DATE = '2026-06-04';
+        const STATUS_LABELS = { todo: 'Por Hacer', progress: 'En Proceso', done: 'Terminado' };
+
+        const monthNames = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+
+        let tasks = [];
+        let currentSearch = '';
+        let currentSubjectFilter = 'todos';
+        let currentPriorityFilter = 'todos';
+        let activeView = 'kanban';
+        let calendarDate = new Date(2026, 5, 4);
+        let draggedTaskId = null;
+
+        const $ = (id) => document.getElementById(id);
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str ?? '';
+            return div.innerHTML;
+        }
+
+        function init() {
+            loadTasks();
+            initCosmicBackground();
+            bindEvents();
+            lucide.createIcons();
+        }
+
+        function bindEvents() {
+            $('btn-new-task').addEventListener('click', openModal);
+            $('btn-close-modal').addEventListener('click', closeModal);
+            $('btn-cancel-modal').addEventListener('click', closeModal);
+            $('task-form').addEventListener('submit', handleFormSubmit);
+            $('search-input').addEventListener('input', filterTasks);
+            $('filter-subject').addEventListener('change', filterTasks);
+            $('filter-priority').addEventListener('change', filterTasks);
+            $('btn-export').addEventListener('click', exportTasks);
+            $('import-file').addEventListener('change', importTasks);
+            $('cal-prev').addEventListener('click', () => navigateCalendar(-1));
+            $('cal-next').addEventListener('click', () => navigateCalendar(1));
+            $('cal-today').addEventListener('click', setCalendarToday);
+            $('btn-close-mobile').addEventListener('click', closeMobileMenu);
+            $('btn-mobile-edit').addEventListener('click', openEditFromMobile);
+            $('btn-mobile-delete').addEventListener('click', deleteFromMobile);
+
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.addEventListener('click', () => switchView(btn.dataset.view));
+            });
+
+            document.querySelectorAll('.mobile-move-btn').forEach(btn => {
+                btn.addEventListener('click', () => moveTaskMobile(btn.dataset.mobileMove));
+            });
+
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.addEventListener('dragover', allowDrop);
+                zone.addEventListener('dragenter', dragEnter);
+                zone.addEventListener('dragleave', dragLeave);
+                zone.addEventListener('drop', drop);
+            });
+
+            $('kanban-view-container').addEventListener('click', handleKanbanClick);
+            $('calendar-grid-body').addEventListener('click', handleCalendarClick);
+
+            $('modal-backdrop').addEventListener('click', (e) => {
+                if (e.target === $('modal-backdrop')) closeModal();
+            });
+            $('mobile-menu-backdrop').addEventListener('click', (e) => {
+                if (e.target === $('mobile-menu-backdrop')) closeMobileMenu();
+            });
+        }
+
+        function handleKanbanClick(e) {
+            const editBtn = e.target.closest('[data-action="edit"]');
+            const deleteBtn = e.target.closest('[data-action="delete"]');
+            const mobileBtn = e.target.closest('[data-action="mobile-menu"]');
+
+            if (editBtn) {
+                e.stopPropagation();
+                openEditTask(editBtn.dataset.id);
+            } else if (deleteBtn) {
+                e.stopPropagation();
+                deleteTask(deleteBtn.dataset.id);
+            } else if (mobileBtn) {
+                e.stopPropagation();
+                openMobileMenu(mobileBtn.dataset.id);
+            }
+        }
+
+        function handleCalendarClick(e) {
+            const pill = e.target.closest('[data-calendar-task]');
+            if (pill) openEditTask(pill.dataset.calendarTask);
+        }
+
+        // --- Fondo cósmico mejorado ---
+        function initCosmicBackground() {
+            const canvas = $('cosmic-canvas');
+            const ctx = canvas.getContext('2d');
+            let stars = [];
+            const maxStars = 65;
+            let mouseX = -1000, mouseY = -1000;
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            window.addEventListener('resize', resize);
+            window.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+
+            resize();
+
+            for (let i = 0; i < maxStars; i++) {
+                const hue = i % 3 === 0 ? '244, 114, 182' : i % 3 === 1 ? '34, 211, 238' : '52, 211, 153';
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 2 + 0.4,
+                    vx: (Math.random() - 0.5) * 0.25,
+                    vy: (Math.random() - 0.5) * 0.25,
+                    opacity: Math.random() * 0.7 + 0.2,
+                    rgb: hue,
+                    twinkle: Math.random() * Math.PI * 2
+                });
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                stars.forEach((star, index) => {
+                    star.x += star.vx;
+                    star.y += star.vy;
+                    star.twinkle += 0.02;
+
+                    if (star.x < 0 || star.x > canvas.width) star.vx *= -1;
+                    if (star.y < 0 || star.y > canvas.height) star.vy *= -1;
+
+                    const distMouse = Math.hypot(star.x - mouseX, star.y - mouseY);
+                    if (distMouse < 120) {
+                        star.x += (star.x - mouseX) * 0.008;
+                        star.y += (star.y - mouseY) * 0.008;
+                    }
+
+                    const pulse = 0.5 + 0.5 * Math.sin(star.twinkle);
+                    const alpha = star.opacity * (0.6 + 0.4 * pulse);
+
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${star.rgb}, ${alpha})`;
+                    ctx.fill();
+
+                    for (let j = index + 1; j < stars.length; j++) {
+                        const other = stars[j];
+                        const dist = Math.hypot(star.x - other.x, star.y - other.y);
+                        if (dist < 100) {
+                            ctx.beginPath();
+                            ctx.moveTo(star.x, star.y);
+                            ctx.lineTo(other.x, other.y);
+                            ctx.strokeStyle = `rgba(34, 211, 238, ${0.12 * (1 - dist / 100)})`;
+                            ctx.lineWidth = 0.6;
+                            ctx.stroke();
+                        }
+                    }
+                });
+
+                requestAnimationFrame(draw);
+            }
+
+            draw();
+        }
+
+        function switchView(view) {
+            activeView = view;
+            const kanban = $('kanban-view-container');
+            const calendar = $('calendar-view-container');
+            const btnKanban = $('btn-view-kanban');
+            const btnCalendar = $('btn-view-calendar');
+
+            const activeClasses = 'view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-cosmic-accent to-fuchsia-600 text-white transition-all cursor-pointer shadow-md';
+            const inactiveClasses = 'view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer';
+
+            if (view === 'kanban') {
+                kanban.classList.remove('hidden');
+                kanban.classList.add('view-transition');
+                calendar.classList.add('hidden');
+                btnKanban.className = activeClasses;
+                btnCalendar.className = inactiveClasses;
+            } else {
+                kanban.classList.add('hidden');
+                calendar.classList.remove('hidden');
+                calendar.classList.add('view-transition');
+                btnCalendar.className = activeClasses;
+                btnKanban.className = inactiveClasses;
+                renderCalendarGrid();
+            }
+            lucide.createIcons();
+        }
+
+        function setCalendarToday() {
+            calendarDate = new Date(2026, 5, 4);
+            renderCalendarGrid();
+        }
+
+        function navigateCalendar(dir) {
+            calendarDate.setMonth(calendarDate.getMonth() + dir);
+            renderCalendarGrid();
+        }
+
+        function renderCalendarGrid() {
+            const gridBody = $('calendar-grid-body');
+            const monthYearTitle = $('calendar-month-year');
+            gridBody.innerHTML = '';
+
+            const year = calendarDate.getFullYear();
+            const month = calendarDate.getMonth();
+            monthYearTitle.innerText = `${monthNames[month]} ${year}`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            let dateCounter = 1;
+            let rowsHtml = '';
+
+            for (let i = 0; i < 6; i++) {
+                if (dateCounter > totalDays) break;
+                let rowCells = '';
+
+                for (let j = 0; j < 7; j++) {
+                    if (i === 0 && j < firstDay || dateCounter > totalDays) {
+                        rowCells += '<td class="p-2 border border-cosmic-700/20 bg-cosmic-950/20 h-24"></td>';
+                    } else {
+                        const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dateCounter).padStart(2, '0')}`;
+                        const dayTasks = tasks.filter(t => t.date === dayStr);
+
+                        let tasksMarkup = dayTasks.map(task => {
+                            let badgeClass = 'bg-slate-800/80 text-slate-300 border-slate-600/40';
+                            if (task.priority === 'Alta') badgeClass = 'bg-rose-950/80 text-rose-300 border-rose-700/50';
+                            if (task.priority === 'Media') badgeClass = 'bg-amber-950/80 text-amber-300 border-amber-700/50';
+                            if (task.priority === 'Baja') badgeClass = 'bg-emerald-950/80 text-emerald-300 border-emerald-700/50';
+                            if (task.status === 'done') badgeClass = 'bg-slate-900 text-slate-500 line-through border-slate-700/50';
+
+                            return `<div data-calendar-task="${escapeHtml(task.id)}" class="text-[10px] p-1 rounded border ${badgeClass} cursor-pointer truncate font-medium hover:scale-105 transition-transform mb-1" title="${escapeHtml(task.name)}">${escapeHtml(task.name)}</div>`;
+                        }).join('');
+
+                        const isToday = year === 2026 && month === 5 && dateCounter === 4;
+                        const todayClass = isToday
+                            ? 'bg-gradient-to-br from-cosmic-cyan/15 to-cosmic-accent/10 border-cosmic-cyan/50 ring-1 ring-cosmic-cyan/30'
+                            : 'bg-cosmic-900/40 border-cosmic-700/20';
+
+                        rowCells += `
+                            <td class="p-2 border ${todayClass} h-28 align-top hover:bg-cosmic-800/40 transition-colors">
+                                <div class="flex justify-between items-center mb-1.5">
+                                    <span class="text-xs font-bold ${isToday ? 'text-cosmic-cyan bg-cosmic-cyan/30 w-6 h-6 rounded-full flex items-center justify-center shadow-lg shadow-cosmic-cyan/20' : 'text-slate-400'}">${dateCounter}</span>
+                                    ${dayTasks.length ? '<span class="w-2 h-2 rounded-full bg-cosmic-accent animate-pulse"></span>' : ''}
+                                </div>
+                                <div class="overflow-y-auto max-h-[72px] space-y-1">${tasksMarkup}</div>
+                            </td>`;
+                        dateCounter++;
+                    }
+                }
+                rowsHtml += `<tr>${rowCells}</tr>`;
+            }
+
+            gridBody.innerHTML = rowsHtml;
+        }
+
+        function showNotification(message, type = 'success') {
+            const container = $('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm translate-x-8 opacity-0 pointer-events-auto backdrop-blur-md';
+
+            const icons = { success: 'check-circle-2', info: 'info', danger: 'alert-triangle' };
+            const styles = {
+                success: ['bg-emerald-950/90', 'border-emerald-600/50', 'text-emerald-300'],
+                info: ['bg-cosmic-900/95', 'border-cosmic-cyan/50', 'text-cosmic-cyan'],
+                danger: ['bg-rose-950/90', 'border-rose-600/50', 'text-rose-300']
+            };
+
+            toast.classList.add(...(styles[type] || styles.success));
+            toast.innerHTML = `<i data-lucide="${icons[type] || icons.success}" class="w-5 h-5 flex-shrink-0"></i><span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-8', 'opacity-0');
+                toast.classList.add('animate-slide-in');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-4', 'scale-95');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        function loadTasks() {
+            const localData = localStorage.getItem(STORAGE_KEY);
+            if (localData) {
+                tasks = JSON.parse(localData);
+            } else {
+                tasks = [
+                    { id: 'seed-1', name: 'Investigación de Redes Computacionales', subject: 'Informática', date: '2026-06-06', priority: 'Alta', notes: 'Investigar el modelo OSI y protocolos TCP/IP. Formato PDF.', status: 'todo' },
+                    { id: 'seed-2', name: 'Ejercicios de Matrices Matemáticas', subject: 'Matemáticas', date: '2026-06-03', priority: 'Media', notes: 'Ejercicios páginas 45 a 47 del folleto.', status: 'progress' },
+                    { id: 'seed-3', name: 'Leyes de Newton - Experimento de Física', subject: 'Física', date: '2026-06-09', priority: 'Baja', notes: 'Video explicativo de 2 minutos sobre inercia.', status: 'done' }
+                ];
+                saveTasks();
+            }
+            renderTasks();
+        }
+
+        function saveTasks() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        }
+
+        function exportTasks() {
+            if (!tasks.length) {
+                showNotification('No hay tareas para exportar', 'danger');
+                return;
+            }
+            const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `VisualKanban_Copia_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('Copia de seguridad descargada con éxito', 'success');
+        }
+
+        function importTasks(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        tasks = imported;
+                        saveTasks();
+                        renderTasks();
+                        showNotification('¡Copia de seguridad cargada correctamente!', 'success');
+                    } else {
+                        showNotification('Formato de archivo no válido', 'danger');
+                    }
+                } catch {
+                    showNotification('Error al procesar el archivo', 'danger');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function filterTasks() {
+            currentSearch = $('search-input').value.toLowerCase().trim();
+            currentSubjectFilter = $('filter-subject').value;
+            currentPriorityFilter = $('filter-priority').value;
+            renderTasks();
+        }
+
+        function getPriorityClasses(priority) {
+            const map = {
+                Baja: 'bg-emerald-950/60 text-emerald-400 border border-emerald-700/40',
+                Media: 'bg-amber-950/60 text-amber-400 border border-amber-700/40',
+                Alta: 'bg-rose-950/60 text-rose-400 border border-rose-700/40'
+            };
+            return map[priority] || map.Media;
+        }
+
+        function createTaskCard(task, index) {
+            const card = document.createElement('div');
+            card.id = task.id;
+            card.draggable = true;
+            card.dataset.id = task.id;
+            card.className = 'task-card bg-cosmic-800/90 border border-cosmic-700/60 rounded-xl p-4 shadow-md transition-all duration-300 cursor-grab active:cursor-grabbing select-none group relative backdrop-blur-sm';
+            card.style.animationDelay = `${index * 0.06}s`;
+
+            card.addEventListener('dragstart', drag);
+            card.addEventListener('dragend', dragEnd);
+
+            const [y, m, d] = task.date.split('-');
+            const formattedDate = `${d}/${m}/${y}`;
+            const isOverdue = task.date < EXAM_DATE && task.status !== 'done';
+            const dateClass = isOverdue
+                ? 'bg-rose-950/50 border border-rose-800/50 text-rose-400 animate-pulse'
+                : 'bg-cosmic-950 border border-cosmic-700/60 text-slate-400';
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start gap-2 mb-2">
+                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${getPriorityClasses(task.priority)}">${escapeHtml(task.priority)}</span>
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button type="button" data-action="edit" data-id="${escapeHtml(task.id)}" class="text-slate-400 hover:text-cosmic-cyan p-1 rounded hover:bg-cosmic-950 cursor-pointer" title="Editar">
+                            <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button type="button" data-action="delete" data-id="${escapeHtml(task.id)}" class="text-slate-400 hover:text-rose-400 p-1 rounded hover:bg-cosmic-950 cursor-pointer" title="Eliminar">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                    <button type="button" data-action="mobile-menu" data-id="${escapeHtml(task.id)}" class="md:hidden text-slate-400 hover:text-white p-1 rounded cursor-pointer">
+                        <i data-lucide="more-vertical" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <h4 class="font-semibold text-white text-sm mb-1 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-cosmic-cyan group-hover:to-cosmic-accent transition-all break-words">${escapeHtml(task.name)}</h4>
+                <div class="text-xs text-slate-400 mb-2 font-medium flex items-center gap-1.5">
+                    <i data-lucide="book-open" class="w-3 h-3 text-cosmic-cyan"></i>
+                    <span>${escapeHtml(task.subject)}</span>
+                </div>
+                ${task.notes ? `<p class="text-xs text-slate-400/80 mb-3 line-clamp-2 break-words bg-cosmic-950/50 p-2 rounded-lg border border-cosmic-700/30">${escapeHtml(task.notes)}</p>` : ''}
+                <div class="flex justify-between items-center pt-2 border-t border-cosmic-700/30">
+                    <div class="flex items-center gap-1 text-[11px] px-2 py-1 rounded-md ${dateClass}">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                        <span>${formattedDate}${isOverdue ? ' (Vencida)' : ''}</span>
+                    </div>
+                    <i data-lucide="${task.status === 'done' ? 'check-circle' : 'clock'}" class="w-4 h-4 ${task.status === 'done' ? 'text-emerald-400' : 'text-slate-500'}"></i>
+                </div>`;
+
+            return card;
+        }
+
+        function renderTasks() {
+            if (activeView === 'calendar') renderCalendarGrid();
+
+            const containers = { todo: $('todo'), progress: $('progress'), done: $('done') };
+            Object.values(containers).forEach(c => c.innerHTML = '');
+
+            const counts = { todo: 0, progress: 0, done: 0 };
+
+            const filtered = tasks.filter(task => {
+                const matchSearch = task.name.toLowerCase().includes(currentSearch);
+                const matchSubject = currentSubjectFilter === 'todos' || task.subject === currentSubjectFilter;
+                const matchPriority = currentPriorityFilter === 'todos' || task.priority === currentPriorityFilter;
+                return matchSearch && matchSubject && matchPriority;
+            });
+
+            filtered.forEach((task, index) => {
+                counts[task.status]++;
+                const card = createTaskCard(task, index);
+                containers[task.status]?.appendChild(card);
+            });
+
+            $('badge-todo').innerText = counts.todo;
+            $('badge-progress').innerText = counts.progress;
+            $('badge-done').innerText = counts.done;
+
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.status === 'done').length;
+            const pending = total - completed;
+            const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            $('stats-total').innerText = total;
+            $('stats-pending').innerText = pending;
+            $('stats-completed').innerText = completed;
+            $('progress-bar').style.width = `${pct}%`;
+            $('progress-percentage').innerText = `${pct}% completado`;
+
+            const messages = [
+                [0, 0, "¡Tu tablero está libre! Presiona 'Nueva Tarea' para comenzar."],
+                [1, 0, '¡Buen momento para arrancar una tarea hoy! 💪'],
+                [1, 40, '¡Excelente inicio! Cada paso cuenta. ✨'],
+                [40, 80, '¡Vas más de la mitad, sigue así! 🚀'],
+                [80, 100, '¡Casi listo! Un empujón final. 🔥'],
+                [100, 101, '¡Todas las tareas completadas! 🎉']
+            ];
+            const msg = messages.find(([min, max]) => pct >= min && pct < max)?.[2] || messages[1][2];
+            $('motivational-msg').innerText = msg;
+
+            lucide.createIcons();
+        }
+
+        function allowDrop(ev) { ev.preventDefault(); }
+
+        function drag(ev) {
+            draggedTaskId = ev.currentTarget.id;
+            ev.dataTransfer.setData('text/plain', draggedTaskId);
+            ev.currentTarget.classList.add('opacity-40', 'scale-95', 'rotate-1');
+            document.querySelectorAll('.drop-zone').forEach(z => {
+                z.style.borderStyle = 'dashed';
+                z.style.borderColor = 'rgba(244, 114, 182, 0.3)';
+            });
+        }
+
+        function dragEnd(ev) {
+            ev.currentTarget.classList.remove('opacity-40', 'scale-95', 'rotate-1');
+            document.querySelectorAll('.drop-zone').forEach(z => {
+                z.style.borderStyle = 'solid';
+                z.style.borderColor = 'transparent';
+                z.classList.remove('drag-over');
+            });
+            draggedTaskId = null;
+        }
+
+        function getDropZone(el) {
+            while (el && !el.classList?.contains('drop-zone')) el = el.parentElement;
+            return el;
+        }
+
+        function dragEnter(ev) {
+            ev.preventDefault();
+            const zone = getDropZone(ev.target);
+            zone?.classList.add('drag-over');
+        }
+
+        function dragLeave(ev) {
+            const zone = getDropZone(ev.target);
+            if (zone && !zone.contains(ev.relatedTarget)) zone.classList.remove('drag-over');
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const zone = getDropZone(ev.target);
+            if (!zone) return;
+
+            zone.classList.remove('drag-over');
+            const taskId = ev.dataTransfer.getData('text/plain');
+            const targetStatus = zone.dataset.status || zone.id;
+            const task = tasks.find(t => t.id === taskId);
+
+            if (task && task.status !== targetStatus) {
+                task.status = targetStatus;
+                saveTasks();
+                renderTasks();
+                showNotification(`Tarea movida a "${STATUS_LABELS[targetStatus]}"`, 'info');
+            }
+        }
+
+        function openModal() {
+            $('modal-title').innerHTML = '<i data-lucide="plus-circle" class="w-5 h-5 text-cosmic-cyan"></i> Crear Nueva Tarea';
+            $('submit-btn').innerText = 'Guardar Tarea';
+            $('task-form').reset();
+            $('edit-task-id').value = '';
+            $('task-date').value = EXAM_DATE;
+
+            const backdrop = $('modal-backdrop');
+            const container = $('modal-container');
+            backdrop.classList.remove('hidden');
+            requestAnimationFrame(() => container.classList.remove('scale-95', 'opacity-0'));
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            const container = $('modal-container');
+            container.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => $('modal-backdrop').classList.add('hidden'), 200);
+        }
+
+        function openEditTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            $('modal-title').innerHTML = '<i data-lucide="edit" class="w-5 h-5 text-cosmic-cyan"></i> Editar Tarea';
+            $('submit-btn').innerText = 'Actualizar Cambios';
+            $('edit-task-id').value = task.id;
+            $('task-name').value = task.name;
+            $('task-subject').value = task.subject;
+            $('task-date').value = task.date;
+            $('task-notes').value = task.notes || '';
+
+            document.querySelectorAll('input[name="task-priority"]').forEach(r => {
+                r.checked = r.value === task.priority;
+            });
+
+            const backdrop = $('modal-backdrop');
+            const container = $('modal-container');
+            backdrop.classList.remove('hidden');
+            requestAnimationFrame(() => container.classList.remove('scale-95', 'opacity-0'));
+            lucide.createIcons();
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const editId = $('edit-task-id').value;
+            const name = $('task-name').value.trim();
+            const subject = $('task-subject').value;
+            const date = $('task-date').value;
+            const notes = $('task-notes').value.trim();
+            const priority = document.querySelector('input[name="task-priority"]:checked')?.value || 'Media';
+
+            if (editId) {
+                tasks = tasks.map(t => t.id === editId ? { ...t, name, subject, date, priority, notes } : t);
+                showNotification('Tarea actualizada con éxito');
+            } else {
+                tasks.push({ id: 'task-' + Date.now(), name, subject, date, priority, notes, status: 'todo' });
+                showNotification('¡Nueva tarea añadida al tablero!');
+            }
+
+            saveTasks();
+            renderTasks();
+            closeModal();
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+            renderTasks();
+            showNotification('Tarea eliminada correctamente', 'danger');
+        }
+
+        function openMobileMenu(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            $('mobile-task-id').value = id;
+            $('mobile-menu-title').innerText = task.name;
+
+            const backdrop = $('mobile-menu-backdrop');
+            const container = $('mobile-menu-container');
+            backdrop.classList.remove('hidden');
+            requestAnimationFrame(() => container.classList.remove('translate-y-full'));
+        }
+
+        function closeMobileMenu() {
+            const container = $('mobile-menu-container');
+            container.classList.add('translate-y-full');
+            setTimeout(() => $('mobile-menu-backdrop').classList.add('hidden'), 200);
+        }
+
+        function moveTaskMobile(newStatus) {
+            const id = $('mobile-task-id').value;
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.status = newStatus;
+                saveTasks();
+                renderTasks();
+                showNotification(`Tarea movida a "${STATUS_LABELS[newStatus]}"`, 'info');
+            }
+            closeMobileMenu();
+        }
+
+        function openEditFromMobile() {
+            const id = $('mobile-task-id').value;
+            closeMobileMenu();
+            setTimeout(() => openEditTask(id), 250);
+        }
+
+        function deleteFromMobile() {
+            const id = $('mobile-task-id').value;
+            closeMobileMenu();
+            setTimeout(() => deleteTask(id), 250);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
