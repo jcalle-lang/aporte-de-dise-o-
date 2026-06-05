@@ -136,9 +136,10 @@
             box-shadow: 0 0 24px var(--glow-cyan);
         }
 
+        /* CORRECCIÓN DE INVISIBILIDAD: Opacity 1 por defecto para evitar que las tarjetas se oculten si falla la animación */
         .task-card {
             animation: fadeUp 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-            opacity: 0;
+            opacity: 1 !important; 
         }
 
         .task-card:hover {
@@ -183,194 +184,351 @@
 
     <canvas id="cosmic-canvas" class="fixed inset-0 pointer-events-none z-0 opacity-70" aria-hidden="true"></canvas>
 
-    <header class="relative z-10 border-b border-cosmic-700/40 bg-cosmic-950/75 backdrop-blur-xl sticky top-0 px-4 py-4 md:px-8">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div class="flex items-center gap-3">
-                <div class="bg-gradient-to-tr from-cosmic-accent via-fuchsia-500 to-cosmic-cyan p-2.5 rounded-2xl text-white shadow-lg shadow-cosmic-accent/30 animate-float">
-                    <i data-lucide="kanban" class="w-6 h-6"></i>
+    <!-- MEJORA GLOBAL: El toast-container ahora es un hijo directo de body para estar siempre accesible sin importar pantallas ocultas -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+    <!-- PANTALLA DE REGISTRO / LOGIN (Se muestra si no hay estudiante activo) -->
+    <div id="auth-screen" class="fixed inset-0 z-50 bg-cosmic-950 flex items-center justify-center p-4">
+        <div class="bg-cosmic-900 border border-cosmic-700/60 p-6 md:p-8 rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden backdrop-blur-xl">
+            <div class="absolute top-0 right-0 w-32 h-32 bg-cosmic-accent/10 rounded-full blur-3xl"></div>
+            <div class="absolute bottom-0 left-0 w-32 h-32 bg-cosmic-cyan/10 rounded-full blur-3xl"></div>
+
+            <div class="flex flex-col items-center gap-3 mb-4 text-center">
+                <div class="bg-gradient-to-tr from-cosmic-accent via-fuchsia-500 to-cosmic-cyan p-3 rounded-2xl text-white shadow-lg shadow-cosmic-accent/30 animate-float">
+                    <i id="auth-icon" data-lucide="key-round" class="w-8 h-8"></i>
                 </div>
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight title-gradient">VisualKanban</h1>
-                    <p class="text-xs text-slate-400 font-medium">Proyecto de Evaluación • Especialidad de Informática</p>
-                </div>
+                <h2 id="auth-title" class="text-2xl font-bold title-gradient">Ingreso al Sistema Escolar</h2>
+                <p id="auth-desc" class="text-sm text-slate-400">Inicia sesión con tu código o registra tu matrícula estudiantil.</p>
             </div>
 
-            <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-                <div class="flex bg-cosmic-900/80 border border-cosmic-700/50 p-1 rounded-xl backdrop-blur-sm">
-                    <button id="btn-view-kanban" type="button" data-view="kanban" class="view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-cosmic-accent to-fuchsia-600 text-white transition-all cursor-pointer shadow-md">
-                        <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
-                        <span>Tablero</span>
-                    </button>
-                    <button id="btn-view-calendar" type="button" data-view="calendar" class="view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer">
-                        <i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>
-                        <span>Calendario</span>
-                    </button>
-                </div>
-
-                <button type="button" id="btn-new-task" class="btn-glow flex items-center justify-center gap-2 bg-gradient-to-r from-cosmic-accent via-fuchsia-500 to-cosmic-cyan hover:opacity-95 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg active:scale-[0.97] cursor-pointer">
-                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
-                    <span>Nueva Tarea</span>
+            <!-- Alternancia entre Login y Registro -->
+            <div class="flex bg-cosmic-950 border border-cosmic-700/40 p-1 rounded-xl mb-6 relative z-10">
+                <button type="button" id="tab-login" onclick="setAuthMode('login')" class="flex-1 py-2 text-xs font-bold text-center rounded-lg bg-gradient-to-r from-cosmic-accent to-fuchsia-600 text-white cursor-pointer transition-all shadow">
+                    Iniciar Sesión
+                </button>
+                <button type="button" id="tab-register" onclick="setAuthMode('register')" class="flex-1 py-2 text-xs font-bold text-center rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all">
+                    Registrarse
                 </button>
             </div>
-        </div>
-    </header>
 
-    <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6">
+            <form id="auth-form" class="space-y-4">
+                <!-- Campo Nombre (Solo visible en modo Registro) -->
+                <div id="div-reg-name" class="hidden">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Nombre Completo del Estudiante</label>
+                    <input type="text" id="reg-name" class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cosmic-cyan transition-all" placeholder="Ej: Joel Alexander Hernández">
+                </div>
 
-        <div class="bg-gradient-to-br from-cosmic-900/95 via-cosmic-800/30 to-cosmic-900/50 border border-cosmic-700/50 rounded-2xl p-4 md:p-6 flex flex-col gap-4 shadow-xl backdrop-blur-sm relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-48 h-48 bg-cosmic-cyan/5 rounded-full blur-3xl pointer-events-none animate-glow-pulse"></div>
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
+                <!-- Campo Matrícula / Código Estudiantil (Siempre visible) -->
                 <div>
-                    <h2 class="text-lg font-semibold text-white">¡Bienvenido a tu Espacio de Trabajo Escolar!</h2>
-                    <p class="text-sm text-slate-400 mt-1">Organiza tus proyectos, tareas semanales y actividades de manera interactiva.</p>
+                    <label id="label-matricula" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Matrícula ID / Código Estudiantil</label>
+                    <input type="text" id="reg-matricula" required class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cosmic-cyan transition-all" placeholder="Ej: EST-1024">
                 </div>
-                <div class="flex gap-4 w-full md:w-auto justify-start">
-                    <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
-                        <div id="stats-total" class="text-lg font-bold text-cosmic-cyan">0</div>
-                        <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total</div>
-                    </div>
-                    <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
-                        <div id="stats-pending" class="text-lg font-bold text-amber-400">0</div>
-                        <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Pendientes</div>
-                    </div>
-                    <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
-                        <div id="stats-completed" class="text-lg font-bold text-emerald-400">0</div>
-                        <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Listas</div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="border-t border-cosmic-700/40 pt-4 relative">
-                <div class="flex justify-between items-center text-xs mb-1.5">
-                    <span id="motivational-msg" class="text-transparent bg-clip-text bg-gradient-to-r from-cosmic-cyan to-cosmic-accent font-medium transition-all duration-500">¡Vamos a organizarnos hoy!</span>
-                    <span id="progress-percentage" class="text-slate-400 font-mono font-semibold">0% completado</span>
-                </div>
-                <div class="w-full bg-cosmic-950 rounded-full h-3 overflow-hidden border border-cosmic-700/60 shadow-inner">
-                    <div id="progress-bar" class="progress-shimmer h-full w-0 transition-all duration-700 ease-out rounded-full"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-cosmic-900/60 border border-cosmic-700/50 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-lg backdrop-blur-sm">
-            <div class="relative w-full md:w-72">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-                    <i data-lucide="search" class="w-4 h-4"></i>
-                </span>
-                <input type="text" id="search-input" class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cosmic-cyan focus:ring-2 focus:ring-cosmic-cyan/20 transition-all" placeholder="Buscar por título de tarea...">
-            </div>
-
-            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-                <select id="filter-subject" class="bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cosmic-cyan transition-colors cursor-pointer font-semibold">
-                    <option value="todos">Todas las asignaturas</option>
-                    <option value="Informática">Informática</option>
-                    <option value="Matemáticas">Matemáticas</option>
-                    <option value="Física">Física</option>
-                    <option value="Química">Química</option>
-                    <option value="Lengua y Literatura">Lengua y Lit.</option>
-                    <option value="Historia">Historia</option>
-                    <option value="Otro">Otro</option>
-                </select>
-
-                <select id="filter-priority" class="bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cosmic-cyan transition-colors cursor-pointer font-semibold">
-                    <option value="todos">Todas las prioridades</option>
-                    <option value="Baja">Prioridad Baja</option>
-                    <option value="Media">Prioridad Media</option>
-                    <option value="Alta">Prioridad Alta</option>
-                </select>
-
-                <div class="flex items-center gap-1.5 border-l border-cosmic-700/60 pl-3">
-                    <button type="button" id="btn-export" class="p-2 bg-cosmic-950 hover:bg-cosmic-800 border border-cosmic-700/60 rounded-xl text-slate-400 hover:text-cosmic-cyan transition-all cursor-pointer hover:scale-105" title="Exportar copia de seguridad">
-                        <i data-lucide="download" class="w-4 h-4"></i>
-                    </button>
-                    <label class="p-2 bg-cosmic-950 hover:bg-cosmic-800 border border-cosmic-700/60 rounded-xl text-slate-400 hover:text-cosmic-cyan transition-all cursor-pointer hover:scale-105" title="Importar copia de seguridad">
-                        <input type="file" id="import-file" accept=".json" class="hidden">
-                        <i data-lucide="upload" class="w-4 h-4"></i>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
-
-        <div id="kanban-view-container" class="view-transition grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-
-            <div class="kanban-column bg-cosmic-900/90 border border-rose-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
-                <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
-                    <div class="flex items-center gap-2.5">
-                        <span class="w-3 h-3 rounded-full bg-rose-400 ring-4 ring-rose-400/20 animate-pulse"></span>
-                        <h3 class="font-bold text-slate-200 tracking-tight">Por Hacer</h3>
-                    </div>
-                    <span id="badge-todo" class="text-xs bg-rose-950/50 text-rose-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-rose-800/40">0</span>
-                </div>
-                <div id="todo" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="todo"></div>
-            </div>
-
-            <div class="kanban-column bg-cosmic-900/90 border border-amber-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
-                <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
-                    <div class="flex items-center gap-2.5">
-                        <span class="w-3 h-3 rounded-full bg-amber-400 ring-4 ring-amber-400/20"></span>
-                        <h3 class="font-bold text-slate-200 tracking-tight">En Proceso</h3>
-                    </div>
-                    <span id="badge-progress" class="text-xs bg-amber-950/50 text-amber-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-amber-800/40">0</span>
-                </div>
-                <div id="progress" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="progress"></div>
-            </div>
-
-            <div class="kanban-column bg-cosmic-900/90 border border-emerald-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
-                <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
-                    <div class="flex items-center gap-2.5">
-                        <span class="w-3 h-3 rounded-full bg-emerald-400 ring-4 ring-emerald-400/20"></span>
-                        <h3 class="font-bold text-slate-200 tracking-tight">Terminado</h3>
-                    </div>
-                    <span id="badge-done" class="text-xs bg-emerald-950/50 text-emerald-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-emerald-800/40">0</span>
-                </div>
-                <div id="done" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="done"></div>
-            </div>
-        </div>
-
-        <div id="calendar-view-container" class="hidden view-transition bg-cosmic-900/90 border border-cosmic-700/40 rounded-2xl p-6 shadow-xl flex flex-col gap-4 backdrop-blur-sm">
-            <div class="flex justify-between items-center pb-4 border-b border-cosmic-700/30">
-                <div class="flex items-center gap-3">
-                    <div class="p-2 bg-gradient-to-br from-cosmic-cyan/20 to-cosmic-accent/20 border border-cosmic-cyan/30 rounded-xl text-cosmic-cyan">
-                        <i data-lucide="calendar" class="w-5 h-5"></i>
+                <!-- Campos Curso y Especialidad (Solo visibles en modo Registro) -->
+                <div id="div-reg-details" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Curso o Año</label>
+                        <input type="text" id="reg-curso" class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cosmic-cyan transition-all" placeholder="Ej: 3ro Informática 'A'">
                     </div>
                     <div>
-                        <h3 id="calendar-month-year" class="text-lg font-bold text-white">Junio 2026</h3>
-                        <p class="text-xs text-slate-400">Revisa tus entregas organizadas por fecha límite</p>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Especialidad Técnica</label>
+                        <select id="reg-especialidad" class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-4 py-2.5 text-slate-200 focus:outline-none focus:border-cosmic-cyan transition-all font-semibold">
+                            <option value="Informática">Informática</option>
+                            <option value="Sistemas y Redes">Sistemas y Redes</option>
+                            <option value="Contabilidad">Contabilidad</option>
+                            <option value="Electrónica">Electrónica</option>
+                            <option value="Ciencias Generales">Ciencias Generales</option>
+                        </select>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button type="button" id="cal-prev" class="p-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 hover:border-cosmic-cyan/40 text-slate-300 hover:text-white transition-all cursor-pointer hover:scale-105">
-                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
-                    </button>
-                    <button type="button" id="cal-today" class="px-3 py-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 text-xs font-semibold text-slate-300 hover:text-cosmic-cyan transition-all cursor-pointer">
-                        Hoy
-                    </button>
-                    <button type="button" id="cal-next" class="p-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 hover:border-cosmic-cyan/40 text-slate-300 hover:text-white transition-all cursor-pointer hover:scale-105">
-                        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+
+                <button type="submit" id="auth-submit-btn" class="btn-glow w-full bg-gradient-to-r from-cosmic-accent via-fuchsia-500 to-cosmic-cyan text-white py-3 rounded-xl font-bold transition-all shadow-lg active:scale-[0.98] cursor-pointer mt-2">
+                    Ingresar al Tablero
+                </button>
+            </form>
+
+            <!-- Acceso rápido si ya existen registros en el navegador -->
+            <div id="existing-users-sec" class="hidden mt-6 pt-4 border-t border-cosmic-700/40">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 text-center">O selecciona un perfil existente</p>
+                <div id="users-list-dropdown" class="flex flex-col gap-2 max-h-36 overflow-y-auto pr-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ÉXITO DE REGISTRO (Muestra el código auto-generado para copiar) -->
+    <div id="success-reg-backdrop" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 z-50">
+        <div id="success-reg-container" class="bg-cosmic-900 border border-emerald-500/30 p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl relative text-center">
+            <div class="mx-auto w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mb-4">
+                <i data-lucide="party-popper" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">¡Matrícula Exitosa!</h3>
+            <p class="text-xs text-slate-400 mb-4">Se ha creado tu cuenta escolar con éxito. Copia y guarda tu matrícula obligatoria para tus inicios de sesión futuros:</p>
+            
+            <div class="bg-cosmic-950 border border-cosmic-700/60 rounded-xl py-3 px-4 flex items-center justify-between mb-5 font-mono">
+                <span id="success-reg-id" class="text-lg font-bold text-cosmic-cyan">EST-0000</span>
+                <button type="button" onclick="copyGeneratedId()" class="text-xs font-bold text-cosmic-accent hover:text-white flex items-center gap-1 bg-cosmic-800 hover:bg-cosmic-700 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copiar
+                </button>
+            </div>
+            
+            <button type="button" onclick="confirmSuccessReg()" class="btn-glow w-full bg-gradient-to-r from-cosmic-accent via-fuchsia-500 to-cosmic-cyan text-white py-3 rounded-xl font-bold transition-all shadow-lg active:scale-95 cursor-pointer">
+                Entrar al Tablero
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER (Inicialmente oculto hasta el inicio de sesión) -->
+    <div id="app-content" class="hidden flex-col min-h-screen">
+        <!-- Header Principal -->
+        <header class="relative z-10 border-b border-cosmic-700/40 bg-cosmic-950/75 backdrop-blur-xl sticky top-0 px-4 py-4 md:px-8">
+            <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-tr from-cosmic-accent via-fuchsia-500 to-cosmic-cyan p-2.5 rounded-2xl text-white shadow-lg shadow-cosmic-accent/30 animate-float">
+                        <i data-lucide="kanban" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight title-gradient">VisualKanban</h1>
+                        <p class="text-xs text-slate-400 font-medium">Proyecto de Evaluación • Especialidad de Informática</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <div class="flex bg-cosmic-900/80 border border-cosmic-700/50 p-1 rounded-xl backdrop-blur-sm">
+                        <button id="btn-view-kanban" type="button" data-view="kanban" class="view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-cosmic-accent to-fuchsia-600 text-white transition-all cursor-pointer shadow-md">
+                            <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+                            <span>Tablero</span>
+                        </button>
+                        <button id="btn-view-calendar" type="button" data-view="calendar" class="view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer">
+                            <i data-lucide="calendar-days" class="w-3.5 h-3.5"></i>
+                            <span>Calendario</span>
+                        </button>
+                        <!-- PESTAÑA: BASE DE DATOS EXCEL -->
+                        <button id="btn-view-database" type="button" data-view="database" class="view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer">
+                            <i data-lucide="table" class="w-3.5 h-3.5"></i>
+                            <span>Base de Datos (Excel)</span>
+                        </button>
+                    </div>
+
+                    <button type="button" id="btn-new-task" class="btn-glow flex items-center justify-center gap-2 bg-gradient-to-r from-cosmic-accent via-fuchsia-500 to-cosmic-cyan hover:opacity-95 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg active:scale-[0.97] cursor-pointer">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Nueva Tarea</span>
                     </button>
                 </div>
             </div>
+        </header>
 
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[600px] border-collapse">
-                    <thead>
-                        <tr class="text-slate-400 text-xs uppercase tracking-wider font-bold">
-                            <th class="py-2 px-1 text-center w-[14.28%]">Dom</th>
-                            <th class="py-2 px-1 text-center w-[14.28%]">Lun</th>
-                            <th class="py-2 px-1 text-center w-[14.28%]">Mar</th>
-                            <th class="py-2 px-1 text-center w-[14.28%]">Mié</th>
-                            <th class="py-2 px-1 text-center w-[14.28%]">Jue</th>
-                            <th class="py-2 px-1 text-center w-[14.28%]">Vie</th>
-                            <th class="py-2 px-1 text-center w-[14.28%]">Sáb</th>
-                        </tr>
-                    </thead>
-                    <tbody id="calendar-grid-body" class="divide-y divide-cosmic-700/30"></tbody>
-                </table>
+        <main class="relative z-10 flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col gap-6">
+
+            <!-- Ficha del Estudiante Activo y Estadísticas -->
+            <div class="bg-gradient-to-br from-cosmic-900/95 via-cosmic-800/30 to-cosmic-900/50 border border-cosmic-700/50 rounded-2xl p-4 md:p-6 flex flex-col gap-4 shadow-xl backdrop-blur-sm relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-48 h-48 bg-cosmic-cyan/5 rounded-full blur-3xl pointer-events-none animate-glow-pulse"></div>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-gradient-to-tr from-cosmic-cyan to-cosmic-accent rounded-full flex items-center justify-center text-white font-extrabold shadow-md">
+                            <span id="user-avatar-initials">ES</span>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h2 id="user-profile-name" class="text-lg font-bold text-white">Estudiante Registrado</h2>
+                                <button onclick="logOutStudent()" class="text-xs text-rose-400 hover:underline flex items-center gap-1 cursor-pointer font-bold">
+                                    <i data-lucide="log-out" class="w-3 h-3"></i> Cambiar Perfil / Salir
+                                </button>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">
+                                <span id="user-profile-id" class="font-mono bg-cosmic-950 px-1.5 py-0.5 rounded border border-cosmic-700/40 text-cosmic-cyan font-bold">ID</span> • 
+                                <span id="user-profile-curso" class="text-slate-300 font-medium font-semibold">Curso</span> • 
+                                <span id="user-profile-especialidad" class="text-cosmic-accent font-semibold">Especialidad</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 w-full md:w-auto justify-start">
+                        <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
+                            <div id="stats-total" class="text-lg font-bold text-cosmic-cyan">0</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Total</div>
+                        </div>
+                        <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
+                            <div id="stats-pending" class="text-lg font-bold text-amber-400">0</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Pendientes</div>
+                        </div>
+                        <div class="stat-card bg-cosmic-950/80 border border-cosmic-700/60 px-4 py-2 rounded-xl text-center min-w-[80px]">
+                            <div id="stats-completed" class="text-lg font-bold text-emerald-400">0</div>
+                            <div class="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Listas</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-cosmic-700/40 pt-4 relative">
+                    <div class="flex justify-between items-center text-xs mb-1.5">
+                        <span id="motivational-msg" class="text-transparent bg-clip-text bg-gradient-to-r from-cosmic-cyan to-cosmic-accent font-medium transition-all duration-500">¡Vamos a organizarnos hoy!</span>
+                        <span id="progress-percentage" class="text-slate-400 font-mono font-semibold">0% completado</span>
+                    </div>
+                    <div class="w-full bg-cosmic-950 rounded-full h-3 overflow-hidden border border-cosmic-700/60 shadow-inner">
+                        <div id="progress-bar" class="progress-shimmer h-full w-0 transition-all duration-700 ease-out rounded-full"></div>
+                    </div>
+                </div>
             </div>
-        </div>
-    </main>
 
+            <!-- Controles globales -->
+            <div id="app-filters-bar" class="bg-cosmic-900/60 border border-cosmic-700/50 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-lg backdrop-blur-sm">
+                <div class="relative w-full md:w-72">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </span>
+                    <input type="text" id="search-input" class="w-full bg-cosmic-950 border border-cosmic-700/60 rounded-xl pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cosmic-cyan focus:ring-2 focus:ring-cosmic-cyan/20 transition-all" placeholder="Buscar por título de tarea...">
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                    <select id="filter-subject" class="bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cosmic-cyan transition-colors cursor-pointer font-semibold">
+                        <option value="todos">Todas las asignaturas</option>
+                        <option value="Informática">Informática</option>
+                        <option value="Matemáticas">Matemáticas</option>
+                        <option value="Física">Física</option>
+                        <option value="Química">Química</option>
+                        <option value="Lengua y Literatura">Lengua y Lit.</option>
+                        <option value="Historia">Historia</option>
+                        <option value="Otro">Otro</option>
+                    </select>
+
+                    <select id="filter-priority" class="bg-cosmic-950 border border-cosmic-700/60 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-cosmic-cyan transition-colors cursor-pointer font-semibold">
+                        <option value="todos">Todas las prioridades</option>
+                        <option value="Baja">Prioridad Baja</option>
+                        <option value="Media">Prioridad Media</option>
+                        <option value="Alta">Prioridad Alta</option>
+                    </select>
+
+                    <div class="flex items-center gap-1.5 border-l border-cosmic-700/60 pl-3">
+                        <button type="button" id="btn-export" class="p-2 bg-cosmic-950 hover:bg-cosmic-800 border border-cosmic-700/60 rounded-xl text-slate-400 hover:text-cosmic-cyan transition-all cursor-pointer hover:scale-105" title="Exportar copia de seguridad de tareas">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                        <label class="p-2 bg-cosmic-950 hover:bg-cosmic-800 border border-cosmic-700/60 rounded-xl text-slate-400 hover:text-cosmic-cyan transition-all cursor-pointer hover:scale-105" title="Importar copia de seguridad de tareas">
+                            <input type="file" id="import-file" accept=".json" class="hidden">
+                            <i data-lucide="upload" class="w-4 h-4"></i>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA DE TABLERO KANBAN -->
+            <div id="kanban-view-container" class="view-transition grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                <div class="kanban-column bg-cosmic-900/90 border border-rose-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-rose-400 ring-4 ring-rose-400/20 animate-pulse"></span>
+                            <h3 class="font-bold text-slate-200 tracking-tight">Por Hacer</h3>
+                        </div>
+                        <span id="badge-todo" class="text-xs bg-rose-950/50 text-rose-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-rose-800/40">0</span>
+                    </div>
+                    <div id="todo" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="todo"></div>
+                </div>
+
+                <div class="kanban-column bg-cosmic-900/90 border border-amber-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-amber-400 ring-4 ring-amber-400/20"></span>
+                            <h3 class="font-bold text-slate-200 tracking-tight">En Proceso</h3>
+                        </div>
+                        <span id="badge-progress" class="text-xs bg-amber-950/50 text-amber-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-amber-800/40">0</span>
+                    </div>
+                    <div id="progress" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="progress"></div>
+                </div>
+
+                <div class="kanban-column bg-cosmic-900/90 border border-emerald-500/20 rounded-2xl p-4 flex flex-col min-h-[550px] shadow-xl backdrop-blur-sm">
+                    <div class="flex justify-between items-center mb-4 pb-3 border-b border-cosmic-700/30">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-emerald-400 ring-4 ring-emerald-400/20"></span>
+                            <h3 class="font-bold text-slate-200 tracking-tight">Terminado</h3>
+                        </div>
+                        <span id="badge-done" class="text-xs bg-emerald-950/50 text-emerald-300 font-mono font-semibold px-2.5 py-0.5 rounded-full border border-emerald-800/40">0</span>
+                    </div>
+                    <div id="done" class="drop-zone flex-1 space-y-4 transition-all duration-300 rounded-xl border-2 border-transparent min-h-[120px]" data-status="done"></div>
+                </div>
+            </div>
+
+            <!-- VISTA DE CALENDARIO ESCOLAR -->
+            <div id="calendar-view-container" class="hidden view-transition bg-cosmic-900/90 border border-cosmic-700/40 rounded-2xl p-6 shadow-xl flex flex-col gap-4 backdrop-blur-sm">
+                <div class="flex justify-between items-center pb-4 border-b border-cosmic-700/30">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-gradient-to-br from-cosmic-cyan/20 to-cosmic-accent/20 border border-cosmic-cyan/30 rounded-xl text-cosmic-cyan">
+                            <i data-lucide="calendar" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 id="calendar-month-year" class="text-lg font-bold text-white">Junio 2026</h3>
+                            <p class="text-xs text-slate-400">Revisa tus entregas organizadas por fecha límite</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="cal-prev" class="p-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 hover:border-cosmic-cyan/40 text-slate-300 hover:text-white transition-all cursor-pointer hover:scale-105">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        </button>
+                        <button type="button" id="cal-today" class="px-3 py-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 text-xs font-semibold text-slate-300 hover:text-cosmic-cyan transition-all cursor-pointer">
+                            Hoy
+                        </button>
+                        <button type="button" id="cal-next" class="p-2 bg-cosmic-800 border border-cosmic-700/60 rounded-xl hover:bg-cosmic-700 hover:border-cosmic-cyan/40 text-slate-300 hover:text-white transition-all cursor-pointer hover:scale-105">
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[600px] border-collapse">
+                        <thead>
+                            <tr class="text-slate-400 text-xs uppercase tracking-wider font-bold">
+                                <th class="py-2 px-1 text-center w-[14.28%]">Dom</th>
+                                <th class="py-2 px-1 text-center w-[14.28%]">Lun</th>
+                                <th class="py-2 px-1 text-center w-[14.28%]">Mar</th>
+                                <th class="py-2 px-1 text-center w-[14.28%]">Mié</th>
+                                <th class="py-2 px-1 text-center w-[14.28%]">Jue</th>
+                                <th class="py-2 px-1 text-center w-[14.28%]">Vie</th>
+                                <th class="py-2 px-1 text-center w-[14.28%]">Sáb</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calendar-grid-body" class="divide-y divide-cosmic-700/30"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VISTA: BASE DE DATOS EXCEL -->
+            <div id="database-view-container" class="hidden view-transition bg-cosmic-900/90 border border-cosmic-700/40 rounded-2xl p-6 shadow-xl flex flex-col gap-6 backdrop-blur-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-cosmic-700/30 gap-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 rounded-xl text-emerald-400">
+                            <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-white">Simulador de Base de Datos Excel</h3>
+                            <p class="text-xs text-slate-400">Toda la base de datos de estudiantes registrados y sus tareas</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="downloadDatabaseExcel()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/25 active:scale-95 cursor-pointer">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>📥 Descargar Base de Datos Excel (.CSV)</span>
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-cosmic-700/50 bg-cosmic-950/60">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-cosmic-800 text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-cosmic-700/50">
+                                <th class="p-3 text-center">Matrícula ID</th>
+                                <th class="p-3">Nombre Completo</th>
+                                <th class="p-3">Curso</th>
+                                <th class="p-3">Especialidad</th>
+                                <th class="p-3 text-center">Tareas Totales</th>
+                                <th class="p-3 text-center">Porcentaje Completado</th>
+                                <th class="p-3 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="db-students-table-body" class="divide-y divide-cosmic-700/30 text-sm">
+                            <!-- Inyectado dinámicamente con JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal de Creación / Edición de Tareas -->
     <div id="modal-backdrop" class="hidden fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50">
         <div id="modal-container" class="bg-cosmic-900 border border-cosmic-accent/30 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl shadow-cosmic-accent/10 transition-all duration-300 scale-95 opacity-0">
             <div class="px-6 py-4 border-b border-cosmic-700 flex justify-between items-center bg-gradient-to-r from-cosmic-900 to-cosmic-800/50">
@@ -444,6 +602,7 @@
         </div>
     </div>
 
+    <!-- Menú Móvil -->
     <div id="mobile-menu-backdrop" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end justify-center z-50 p-4">
         <div id="mobile-menu-container" class="bg-cosmic-900 border border-cosmic-accent/30 rounded-t-2xl w-full max-w-md p-6 space-y-4 translate-y-full transition-transform duration-300">
             <h4 class="font-bold text-lg text-white truncate" id="mobile-menu-title">Acciones de Tarjeta</h4>
@@ -476,19 +635,10 @@
         </div>
     </div>
 
-    <footer class="relative z-10 border-t border-cosmic-700/50 bg-cosmic-950/90 px-4 py-6 md:px-8 mt-auto backdrop-blur-sm">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-            <p>© 2026 VisualKanban. Creado para examen de evaluación del 04/06/2026.</p>
-            <div class="flex items-center gap-4 flex-wrap justify-center">
-                <span class="text-slate-400 font-semibold">Asignatura: <span class="text-slate-300">Desarrollo Web (Técnico de la Especialidad)</span></span>
-                <span class="hidden md:inline text-slate-600">|</span>
-                <span class="text-slate-400 font-semibold">Docente: <span class="text-cosmic-cyan font-bold">Lcdo. Joel Hernández Calero</span></span>
-            </div>
-        </div>
-    </footer>
-
     <script>
-        const STORAGE_KEY = 'kanban_school_tasks';
+        const STORAGE_KEY_TASKS = 'kanban_school_tasks_v2';
+        const STORAGE_KEY_STUDENTS = 'kanban_school_students_v2';
+        const STORAGE_KEY_ACTIVE_STUDENT = 'kanban_active_student_v2';
         const EXAM_DATE = '2026-06-04';
         const STATUS_LABELS = { todo: 'Por Hacer', progress: 'En Proceso', done: 'Terminado' };
 
@@ -498,6 +648,11 @@
         ];
 
         let tasks = [];
+        let studentsList = [];
+        let activeStudent = null;
+        let authMode = 'login'; // 'login' o 'register'
+        let currentlyGeneratedId = ''; // Almacena el código de matrícula asignado dinámicamente
+
         let currentSearch = '';
         let currentSubjectFilter = 'todos';
         let currentPriorityFilter = 'todos';
@@ -514,13 +669,349 @@
         }
 
         function init() {
-            loadTasks();
+            loadStudentsData();
             initCosmicBackground();
             bindEvents();
             lucide.createIcons();
         }
 
+        // --- GENERADOR DE MATRÍCULA ALEATORIA (EST-XXXX) ---
+        function generateRandomMatricula() {
+            let unique = false;
+            let code = '';
+            while (!unique) {
+                const randNum = Math.floor(1000 + Math.random() * 9000); // Número de 4 dígitos
+                code = `EST-${randNum}`;
+                if (!studentsList.some(s => s.matricula === code)) {
+                    unique = true;
+                }
+            }
+            return code;
+        }
+
+        // --- SISTEMA INTERACTIVO DE LOGIN Y REGISTRO ---
+        function setAuthMode(mode) {
+            authMode = mode;
+            const tabLogin = $('tab-login');
+            const tabRegister = $('tab-register');
+            const divName = $('div-reg-name');
+            const divDetails = $('div-reg-details');
+            const authTitle = $('auth-title');
+            const authDesc = $('auth-desc');
+            const authSubmitBtn = $('auth-submit-btn');
+            const authIcon = $('auth-icon');
+            const regMatriculaInput = $('reg-matricula');
+            const labelMatricula = $('label-matricula');
+
+            // Resetear clases de las pestañas
+            tabLogin.className = 'flex-1 py-2 text-xs font-bold text-center rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all';
+            tabRegister.className = 'flex-1 py-2 text-xs font-bold text-center rounded-lg text-slate-400 hover:text-white cursor-pointer transition-all';
+
+            if (mode === 'login') {
+                tabLogin.className = 'flex-1 py-2 text-xs font-bold text-center rounded-lg bg-gradient-to-r from-cosmic-accent to-fuchsia-600 text-white cursor-pointer transition-all shadow';
+                divName.classList.add('hidden');
+                divDetails.classList.add('hidden');
+                
+                $('reg-name').required = false;
+                $('reg-curso').required = false;
+
+                authTitle.innerText = "Ingreso al Tablero";
+                authDesc.innerText = "Inicia sesión con tu código de matrícula auto-generado.";
+                authSubmitBtn.innerText = "Iniciar Sesión";
+                authIcon.setAttribute('data-lucide', 'key-round');
+
+                // Permitir escribir para iniciar sesión
+                regMatriculaInput.readOnly = false;
+                regMatriculaInput.value = '';
+                regMatriculaInput.placeholder = "Ej: EST-4921";
+                regMatriculaInput.classList.remove('bg-cosmic-950/40', 'cursor-not-allowed', 'opacity-70', 'border-cosmic-700/20');
+                labelMatricula.innerText = "Ingresa tu Matrícula ID";
+            } else {
+                tabRegister.className = 'flex-1 py-2 text-xs font-bold text-center rounded-lg bg-gradient-to-r from-cosmic-accent to-fuchsia-600 text-white cursor-pointer transition-all shadow';
+                divName.classList.remove('hidden');
+                divDetails.classList.remove('hidden');
+                
+                $('reg-name').required = true;
+                $('reg-curso').required = true;
+
+                authTitle.innerText = "Registro Académico";
+                authDesc.innerText = "Crea tu perfil. Tu matrícula se generará automáticamente.";
+                authSubmitBtn.innerText = "Obtener Matrícula y Registrarse";
+                authIcon.setAttribute('data-lucide', 'user-plus');
+
+                // Auto-generar la matrícula y bloquear el input en modo registro
+                currentlyGeneratedId = generateRandomMatricula();
+                regMatriculaInput.value = currentlyGeneratedId;
+                regMatriculaInput.readOnly = true;
+                regMatriculaInput.classList.add('bg-cosmic-950/40', 'cursor-not-allowed', 'opacity-70', 'border-cosmic-700/20');
+                labelMatricula.innerText = "Matrícula ID (Asignado de forma automática)";
+            }
+            lucide.createIcons();
+        }
+
+        function loadStudentsData() {
+            const localStudents = localStorage.getItem(STORAGE_KEY_STUDENTS);
+            if (localStudents) {
+                studentsList = JSON.parse(localStudents);
+            }
+
+            const activeId = localStorage.getItem(STORAGE_KEY_ACTIVE_STUDENT);
+            if (activeId) {
+                activeStudent = studentsList.find(s => s.matricula === activeId) || null;
+            }
+
+            if (activeStudent) {
+                showAppContent();
+            } else {
+                showAuthScreen();
+            }
+        }
+
+        function showAuthScreen() {
+            $('auth-screen').classList.remove('hidden');
+            $('app-content').classList.add('hidden');
+            setAuthMode(studentsList.length > 0 ? 'login' : 'register');
+            renderExistingUsersDropdown();
+        }
+
+        function showAppContent() {
+            $('auth-screen').classList.add('hidden');
+            $('app-content').classList.remove('hidden');
+
+            // Renderizar datos del perfil activo
+            $('user-profile-name').innerText = activeStudent.name;
+            $('user-profile-id').innerText = `${activeStudent.matricula}`;
+            $('user-profile-curso').innerText = activeStudent.curso;
+            $('user-profile-especialidad').innerText = activeStudent.especialidad;
+
+            // Avatar Iniciales
+            const initials = activeStudent.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+            $('user-avatar-initials').innerText = initials || 'ES';
+
+            loadTasks();
+            switchView('kanban'); // Asegura volver a la vista principal
+        }
+
+        function handleAuthFormSubmit(e) {
+            e.preventDefault();
+            const matriculaInput = $('reg-matricula').value.trim();
+
+            if (authMode === 'login') {
+                // Iniciar sesión
+                const student = studentsList.find(s => s.matricula === matriculaInput);
+                if (student) {
+                    activeStudent = student;
+                    localStorage.setItem(STORAGE_KEY_ACTIVE_STUDENT, student.matricula);
+                    showNotification(`Sesión iniciada como: ${student.name}`, 'info');
+                    showAppContent();
+                } else {
+                    showNotification('La matrícula no existe. Regístrate en la pestaña de registro.', 'danger');
+                }
+            } else {
+                // Registro de estudiante nuevo
+                const name = $('reg-name').value.trim();
+                const curso = $('reg-curso').value.trim();
+                const especialidad = $('reg-especialidad').value;
+
+                if (studentsList.some(s => s.matricula === currentlyGeneratedId)) {
+                    showNotification('Error al registrar. Por favor, re-intente de nuevo.', 'danger');
+                    return;
+                }
+
+                const newStudent = { name, matricula: currentlyGeneratedId, curso, especialidad };
+                studentsList.push(newStudent);
+                localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(studentsList));
+                
+                activeStudent = newStudent;
+
+                // Desplegar el Modal de éxito de registro para copiar el código
+                showSuccessRegModal(currentlyGeneratedId);
+            }
+        }
+
+        // --- SISTEMA DEL MODAL DE REGISTRO CON ÉXITO ---
+        function showSuccessRegModal(id) {
+            $('success-reg-id').innerText = id;
+            const backdrop = $('success-reg-backdrop');
+            backdrop.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function copyGeneratedId() {
+            const idText = $('success-reg-id').innerText;
+            const el = document.createElement('textarea');
+            el.value = idText;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showNotification('Código de matrícula copiado al portapapeles', 'success');
+        }
+
+        function confirmSuccessReg() {
+            $('success-reg-backdrop').classList.add('hidden');
+            localStorage.setItem(STORAGE_KEY_ACTIVE_STUDENT, activeStudent.matricula);
+            showAppContent();
+        }
+
+        function loginWithExistingStudent(matricula) {
+            const student = studentsList.find(s => s.matricula === matricula);
+            if (student) {
+                activeStudent = student;
+                localStorage.setItem(STORAGE_KEY_ACTIVE_STUDENT, student.matricula);
+                showNotification(`Sesión iniciada como: ${student.name}`, 'info');
+                showAppContent();
+            }
+        }
+
+        function deleteStudentProfile(matricula) {
+            event?.stopPropagation(); // Detener click para no iniciar sesión accidentalmente
+            studentsList = studentsList.filter(s => s.matricula !== matricula);
+            localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(studentsList));
+            
+            // Eliminar tareas asociadas a esa cuenta
+            const localTasks = JSON.parse(localStorage.getItem(STORAGE_KEY_TASKS) || '[]');
+            const updatedTasks = localTasks.filter(t => t.studentId !== matricula);
+            localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(updatedTasks));
+
+            if (activeStudent && activeStudent.matricula === matricula) {
+                localStorage.removeItem(STORAGE_KEY_ACTIVE_STUDENT);
+                activeStudent = null;
+            }
+
+            showNotification('Perfil eliminado de la base de datos', 'danger');
+            loadStudentsData();
+        }
+
+        function logOutStudent() {
+            localStorage.removeItem(STORAGE_KEY_ACTIVE_STUDENT);
+            activeStudent = null;
+            showAuthScreen();
+        }
+
+        function renderExistingUsersDropdown() {
+            const sec = $('existing-users-sec');
+            const list = $('users-list-dropdown');
+            list.innerHTML = '';
+
+            if (studentsList.length > 0) {
+                sec.classList.remove('hidden');
+                studentsList.forEach(stud => {
+                    const btn = document.createElement('div');
+                    btn.className = "flex justify-between items-center bg-cosmic-950 border border-cosmic-700/40 p-3 rounded-xl hover:border-cosmic-cyan/60 transition-all cursor-pointer";
+                    btn.onclick = () => loginWithExistingStudent(stud.matricula);
+                    
+                    btn.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-cosmic-accent/20 rounded-full flex items-center justify-center text-cosmic-accent font-bold text-xs">
+                                ${stud.name[0].toUpperCase()}
+                            </div>
+                            <div class="text-left">
+                                <p class="text-xs font-bold text-white">${escapeHtml(stud.name)}</p>
+                                <p class="text-[10px] text-slate-400 font-mono">${escapeHtml(stud.matricula)} • ${escapeHtml(stud.curso)}</p>
+                            </div>
+                        </div>
+                        <button onclick="deleteStudentProfile('${stud.matricula}')" class="text-slate-500 hover:text-rose-400 p-1.5 rounded hover:bg-cosmic-900 transition-colors cursor-pointer" title="Eliminar registro">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    `;
+                    list.appendChild(btn);
+                });
+                lucide.createIcons();
+            } else {
+                sec.classList.add('hidden');
+            }
+        }
+
+        // --- EXPORTAR BASE DE DATOS EN FORMATO EXCEL / CSV ---
+        function downloadDatabaseExcel() {
+            if (studentsList.length === 0) {
+                showNotification('No hay estudiantes registrados en la base de datos para exportar', 'danger');
+                return;
+            }
+
+            // Conseguir todas las tareas de localStorage para cruzarlas con los estudiantes
+            const allTasks = JSON.parse(localStorage.getItem(STORAGE_KEY_TASKS) || '[]');
+
+            // Encabezados compatibles con Excel (BOM \uFEFF se asegura de que Excel cargue correctamente caracteres tildados y la Ñ)
+            let csvContent = "\uFEFF";
+            csvContent += "MATRÍCULA ID;NOMBRE COMPLETO DEL ESTUDIANTE;CURSO;ESPECIALIDAD;TÍTULO DE TAREA;ASIGNATURA;FECHA LÍMITE;PRIORIDAD;ESTADO\n";
+
+            studentsList.forEach(student => {
+                const studentTasks = allTasks.filter(t => t.studentId === student.matricula);
+
+                if (studentTasks.length === 0) {
+                    csvContent += `"${student.matricula}";"${student.name}";"${student.curso}";"${student.especialidad}";"SIN TAREAS REGISTRADAS";"-";"-";"-";"-"\n`;
+                } else {
+                    studentTasks.forEach(task => {
+                        csvContent += `"${student.matricula}";"${student.name}";"${student.curso}";"${student.especialidad}";"${task.name}";"${task.subject}";"${task.date}";"${task.priority}";"${STATUS_LABELS[task.status]}"\n`;
+                    });
+                }
+            });
+
+            // Descarga de archivo
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Base_de_Datos_Estudiantes_VisualKanban_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showNotification('¡Base de Datos de Excel (.CSV) descargada!', 'success');
+        }
+
+        function renderDatabaseView() {
+            const tableBody = $('db-students-table-body');
+            tableBody.innerHTML = '';
+
+            if (studentsList.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-slate-500">Ningún estudiante registrado en la base de datos.</td></tr>`;
+                return;
+            }
+
+            // Conseguir todas las tareas globales para computar métricas
+            const allTasks = JSON.parse(localStorage.getItem(STORAGE_KEY_TASKS) || '[]');
+
+            studentsList.forEach(stud => {
+                const studTasks = allTasks.filter(t => t.studentId === stud.matricula);
+                const totalStudTasks = studTasks.length;
+                const completedStudTasks = studTasks.filter(t => t.status === 'done').length;
+                const pct = totalStudTasks > 0 ? Math.round((completedStudTasks / totalStudTasks) * 100) : 0;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-cosmic-900/60 border-b border-cosmic-700/20 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-center font-bold text-cosmic-cyan">${escapeHtml(stud.matricula)}</td>
+                    <td class="p-3 font-semibold text-white">${escapeHtml(stud.name)}</td>
+                    <td class="p-3 text-slate-300">${escapeHtml(stud.curso)}</td>
+                    <td class="p-3 text-cosmic-accent font-semibold">${escapeHtml(stud.especialidad)}</td>
+                    <td class="p-3 text-center font-mono font-bold text-slate-400">${totalStudTasks}</td>
+                    <td class="p-3 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            <div class="w-16 bg-cosmic-950 rounded-full h-2 overflow-hidden border border-cosmic-700/50">
+                                <div class="bg-gradient-to-r from-cosmic-cyan to-cosmic-accent h-full" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="font-mono text-xs text-slate-300 font-bold">${pct}%</span>
+                        </div>
+                    </td>
+                    <td class="p-3 text-center">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <button onclick="loginWithExistingStudent('${stud.matricula}')" class="px-2.5 py-1 bg-cosmic-700 hover:bg-cosmic-accent text-white text-xs font-bold rounded-lg transition-colors cursor-pointer" title="Ingresar a este Perfil">
+                                Entrar
+                            </button>
+                            <button onclick="deleteStudentProfile('${stud.matricula}')" class="p-1 text-slate-500 hover:text-rose-400 hover:bg-cosmic-950 rounded transition-all cursor-pointer" title="Eliminar estudiante">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
         function bindEvents() {
+            $('auth-form').addEventListener('submit', handleAuthFormSubmit);
             $('btn-new-task').addEventListener('click', openModal);
             $('btn-close-modal').addEventListener('click', closeModal);
             $('btn-cancel-modal').addEventListener('click', closeModal);
@@ -585,7 +1076,7 @@
             if (pill) openEditTask(pill.dataset.calendarTask);
         }
 
-        // --- Fondo cósmico mejorado ---
+        // --- Fondo cósmico animado ---
         function initCosmicBackground() {
             const canvas = $('cosmic-canvas');
             const ctx = canvas.getContext('2d');
@@ -669,25 +1160,42 @@
             activeView = view;
             const kanban = $('kanban-view-container');
             const calendar = $('calendar-view-container');
+            const database = $('database-view-container');
+            const filtersBar = $('app-filters-bar');
+
             const btnKanban = $('btn-view-kanban');
             const btnCalendar = $('btn-view-calendar');
+            const btnDatabase = $('btn-view-database');
 
             const activeClasses = 'view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-cosmic-accent to-fuchsia-600 text-white transition-all cursor-pointer shadow-md';
             const inactiveClasses = 'view-btn flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition-all cursor-pointer';
 
+            // Resetear vistas
+            kanban.classList.add('hidden');
+            calendar.classList.add('hidden');
+            database.classList.add('hidden');
+            filtersBar.classList.remove('hidden');
+
+            btnKanban.className = inactiveClasses;
+            btnCalendar.className = inactiveClasses;
+            btnDatabase.className = inactiveClasses;
+
             if (view === 'kanban') {
                 kanban.classList.remove('hidden');
                 kanban.classList.add('view-transition');
-                calendar.classList.add('hidden');
                 btnKanban.className = activeClasses;
-                btnCalendar.className = inactiveClasses;
-            } else {
-                kanban.classList.add('hidden');
+                renderTasks();
+            } else if (view === 'calendar') {
                 calendar.classList.remove('hidden');
                 calendar.classList.add('view-transition');
                 btnCalendar.className = activeClasses;
-                btnKanban.className = inactiveClasses;
                 renderCalendarGrid();
+            } else if (view === 'database') {
+                database.classList.remove('hidden');
+                database.classList.add('view-transition');
+                filtersBar.classList.add('hidden'); // Ocultar filtros de tareas en vista de base de datos
+                btnDatabase.className = activeClasses;
+                renderDatabaseView();
             }
             lucide.createIcons();
         }
@@ -716,6 +1224,9 @@
             let dateCounter = 1;
             let rowsHtml = '';
 
+            // Filtrar solo las tareas del estudiante activo
+            const studTasks = tasks.filter(t => t.studentId === activeStudent.matricula);
+
             for (let i = 0; i < 6; i++) {
                 if (dateCounter > totalDays) break;
                 let rowCells = '';
@@ -725,7 +1236,7 @@
                         rowCells += '<td class="p-2 border border-cosmic-700/20 bg-cosmic-950/20 h-24"></td>';
                     } else {
                         const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dateCounter).padStart(2, '0')}`;
-                        const dayTasks = tasks.filter(t => t.date === dayStr);
+                        const dayTasks = studTasks.filter(t => t.date === dayStr);
 
                         let tasksMarkup = dayTasks.map(task => {
                             let badgeClass = 'bg-slate-800/80 text-slate-300 border-slate-600/40';
@@ -761,8 +1272,10 @@
 
         function showNotification(message, type = 'success') {
             const container = $('toast-container');
+            if (!container) return; // Salvaguarda en caso de llamada previa a inicialización completa
+
             const toast = document.createElement('div');
-            toast.className = 'flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm translate-x-8 opacity-0 pointer-events-auto backdrop-blur-md';
+            toast.className = 'flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm translate-x-8 opacity-0 pointer-events-auto backdrop-blur-md z-50';
 
             const icons = { success: 'check-circle-2', info: 'info', danger: 'alert-triangle' };
             const styles = {
@@ -788,14 +1301,14 @@
         }
 
         function loadTasks() {
-            const localData = localStorage.getItem(STORAGE_KEY);
+            const localData = localStorage.getItem(STORAGE_KEY_TASKS);
             if (localData) {
                 tasks = JSON.parse(localData);
             } else {
                 tasks = [
-                    { id: 'seed-1', name: 'Investigación de Redes Computacionales', subject: 'Informática', date: '2026-06-06', priority: 'Alta', notes: 'Investigar el modelo OSI y protocolos TCP/IP. Formato PDF.', status: 'todo' },
-                    { id: 'seed-2', name: 'Ejercicios de Matrices Matemáticas', subject: 'Matemáticas', date: '2026-06-03', priority: 'Media', notes: 'Ejercicios páginas 45 a 47 del folleto.', status: 'progress' },
-                    { id: 'seed-3', name: 'Leyes de Newton - Experimento de Física', subject: 'Física', date: '2026-06-09', priority: 'Baja', notes: 'Video explicativo de 2 minutos sobre inercia.', status: 'done' }
+                    { id: 'seed-1', studentId: activeStudent.matricula, name: 'Investigación de Redes Computacionales', subject: 'Informática', date: '2026-06-06', priority: 'Alta', notes: 'Investigar el modelo OSI y protocolos TCP/IP. Formato PDF.', status: 'todo' },
+                    { id: 'seed-2', studentId: activeStudent.matricula, name: 'Ejercicios de Matrices Matemáticas', subject: 'Matemáticas', date: '2026-06-03', priority: 'Media', notes: 'Ejercicios páginas 45 a 47 del folleto.', status: 'progress' },
+                    { id: 'seed-3', studentId: activeStudent.matricula, name: 'Leyes de Newton - Experimento de Física', subject: 'Física', date: '2026-06-09', priority: 'Baja', notes: 'Video explicativo de 2 minutos sobre inercia.', status: 'done' }
                 ];
                 saveTasks();
             }
@@ -803,22 +1316,24 @@
         }
 
         function saveTasks() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
         }
 
+        // Exportar copia
         function exportTasks() {
-            if (!tasks.length) {
+            const activeTasks = tasks.filter(t => t.studentId === activeStudent.matricula);
+            if (!activeTasks.length) {
                 showNotification('No hay tareas para exportar', 'danger');
                 return;
             }
-            const blob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
+            const blob = new Blob([JSON.stringify(activeTasks, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `VisualKanban_Copia_${new Date().toISOString().split('T')[0]}.json`;
+            a.download = `VisualKanban_Tareas_${activeStudent.name}_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            showNotification('Copia de seguridad descargada con éxito', 'success');
+            showNotification('Copia de seguridad de tus tareas descargada', 'success');
         }
 
         function importTasks(event) {
@@ -830,10 +1345,18 @@
                 try {
                     const imported = JSON.parse(e.target.result);
                     if (Array.isArray(imported)) {
-                        tasks = imported;
+                        const processedImport = imported.map(t => {
+                            t.studentId = activeStudent.matricula;
+                            if (!t.id) t.id = 'task-' + Date.now() + Math.random();
+                            return t;
+                        });
+
+                        const otherStudentsTasks = tasks.filter(t => t.studentId !== activeStudent.matricula);
+                        tasks = [...otherStudentsTasks, ...processedImport];
+                        
                         saveTasks();
                         renderTasks();
-                        showNotification('¡Copia de seguridad cargada correctamente!', 'success');
+                        showNotification('¡Copia de seguridad cargada y enlazada con tu perfil!', 'success');
                     } else {
                         showNotification('Formato de archivo no válido', 'danger');
                     }
@@ -913,13 +1436,17 @@
 
         function renderTasks() {
             if (activeView === 'calendar') renderCalendarGrid();
+            if (activeView === 'database') renderDatabaseView();
 
             const containers = { todo: $('todo'), progress: $('progress'), done: $('done') };
             Object.values(containers).forEach(c => c.innerHTML = '');
 
             const counts = { todo: 0, progress: 0, done: 0 };
 
-            const filtered = tasks.filter(task => {
+            // Filtrar solo las tareas asociadas a este estudiante activo
+            const studTasks = tasks.filter(t => t.studentId === activeStudent.matricula);
+
+            const filtered = studTasks.filter(task => {
                 const matchSearch = task.name.toLowerCase().includes(currentSearch);
                 const matchSubject = currentSubjectFilter === 'todos' || task.subject === currentSubjectFilter;
                 const matchPriority = currentPriorityFilter === 'todos' || task.priority === currentPriorityFilter;
@@ -936,8 +1463,8 @@
             $('badge-progress').innerText = counts.progress;
             $('badge-done').innerText = counts.done;
 
-            const total = tasks.length;
-            const completed = tasks.filter(t => t.status === 'done').length;
+            const total = studTasks.length;
+            const completed = studTasks.filter(t => t.status === 'done').length;
             const pending = total - completed;
             const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -1074,7 +1601,16 @@
                 tasks = tasks.map(t => t.id === editId ? { ...t, name, subject, date, priority, notes } : t);
                 showNotification('Tarea actualizada con éxito');
             } else {
-                tasks.push({ id: 'task-' + Date.now(), name, subject, date, priority, notes, status: 'todo' });
+                tasks.push({ 
+                    id: 'task-' + Date.now(), 
+                    studentId: activeStudent.matricula, // Enlazar al estudiante logueado
+                    name, 
+                    subject, 
+                    date, 
+                    priority, 
+                    notes, 
+                    status: 'todo' 
+                });
                 showNotification('¡Nueva tarea añadida al tablero!');
             }
 
@@ -1103,6 +1639,7 @@
             requestAnimationFrame(() => container.classList.remove('translate-y-full'));
         }
 
+        // Cierre del menú móvil
         function closeMobileMenu() {
             const container = $('mobile-menu-container');
             container.classList.add('translate-y-full');
